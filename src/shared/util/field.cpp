@@ -24,11 +24,12 @@
 
 FieldLine* FieldLine::FromVarList(VarList* list) {
   vector<VarType*> list_entries = list->getChildren();
-  if (list_entries.size() != static_cast<size_t>(6)) {
-    // The list should have exactly 6 entries.
+  if (list_entries.size() != static_cast<size_t>(7)) {
+    // The list should have exactly the expected number of entries.
     return NULL;
   }
   VarString* name = NULL;
+  VarStringEnum* type = NULL;
   VarDouble* p1_x = NULL;
   VarDouble* p1_y = NULL;
   VarDouble* p2_x = NULL;
@@ -38,6 +39,8 @@ FieldLine* FieldLine::FromVarList(VarList* list) {
     VarType* entry = list_entries[i];
     if (entry->getName().compare("Name") == 0) {
       name = reinterpret_cast<VarString*>(entry);
+    } else if (entry->getName().compare("Type") == 0) {
+      type = reinterpret_cast<VarStringEnum*>(entry);
     } else if (entry->getName().compare("P1.x") == 0) {
       p1_x = reinterpret_cast<VarDouble*>(entry);
     } else if (entry->getName().compare("P1.y") == 0) {
@@ -53,13 +56,14 @@ FieldLine* FieldLine::FromVarList(VarList* list) {
       return NULL;
     }
   }
-  return (new FieldLine(name, p1_x, p1_y, p2_x, p2_y, thickness, list));
+  return (new FieldLine(name, type, p1_x, p1_y, p2_x, p2_y, thickness, list));
 }
 
 FieldLine::FieldLine(
-    VarString* name_, VarDouble* p1_x_, VarDouble* p1_y_, VarDouble* p2_x_,
+    VarString* name_, VarStringEnum* type_,
+    VarDouble* p1_x_, VarDouble* p1_y_, VarDouble* p2_x_,
     VarDouble* p2_y_, VarDouble* thickness_, VarList* list_): QObject(),
-    name(name_), p1_x(p1_x_), p1_y(p1_y_), p2_x(p2_x_), p2_y(p2_y_),
+    name(name_), type(type_), p1_x(p1_x_), p1_y(p1_y_), p2_x(p2_x_), p2_y(p2_y_),
     thickness(thickness_), list(list_) {
   connect(name, SIGNAL(wasEdited(VarType*)),
           this, SLOT(Rename()));
@@ -67,6 +71,7 @@ FieldLine::FieldLine(
 
 FieldLine::FieldLine(const FieldLine& other) :
     name(new VarString("Name", other.name->getString())),
+    type(new VarStringEnum("Type", other.type->getName())),
     p1_x(new VarDouble("P1.x", other.p1_x->getDouble())),
     p1_y(new VarDouble("P1.y", other.p1_y->getDouble())),
     p2_x(new VarDouble("P2.x", other.p2_x->getDouble())),
@@ -74,16 +79,36 @@ FieldLine::FieldLine(const FieldLine& other) :
     thickness(new VarDouble("Line thickness", other.thickness->getDouble())),
     list(new VarList(other.name->getString())) {
   list->addChild(name);
+  list->addChild(type);
   list->addChild(p1_x);
   list->addChild(p1_y);
   list->addChild(p2_x);
   list->addChild(p2_y);
   list->addChild(thickness);
+  fillTypeEnum();
   connect(name, SIGNAL(wasEdited(VarType*)), this, SLOT(Rename()));
+}
+
+void FieldLine::fillTypeEnum() const {
+    type->addItem("Undefined");
+    type->addItem("CenterCircle");
+    type->addItem("TopTouchLine");
+    type->addItem("BottomTouchLine");
+    type->addItem("LeftGoalLine");
+    type->addItem("RightGoalLine");
+    type->addItem("HalfwayLine");
+    type->addItem("CenterLine");
+    type->addItem("LeftPenaltyStretch");
+    type->addItem("RightPenaltyStretch");
+    type->addItem("LeftFieldLeftPenaltyStrech");
+    type->addItem("LeftFieldRightPenaltyStrech");
+    type->addItem("RightFieldLeftPenaltyStrech");
+    type->addItem("RightFieldRightPenaltyStrech");
 }
 
 FieldLine::FieldLine(const string& marking_name) :
     name(new VarString("Name", marking_name)),
+    type(new VarStringEnum("Type", "Undefined")),
     p1_x(new VarDouble("P1.x")),
     p1_y(new VarDouble("P1.y")),
     p2_x(new VarDouble("P2.x")),
@@ -91,11 +116,13 @@ FieldLine::FieldLine(const string& marking_name) :
     thickness(new VarDouble("Line thickness", 10)),
     list(new VarList(marking_name)) {
   list->addChild(name);
+  list->addChild(type);
   list->addChild(p1_x);
   list->addChild(p1_y);
   list->addChild(p2_x);
   list->addChild(p2_y);
   list->addChild(thickness);
+  fillTypeEnum();
   connect(name, SIGNAL(wasEdited(VarType*)), this, SLOT(Rename()));
 }
 
@@ -103,6 +130,7 @@ FieldLine::FieldLine(
     const string& marking_name, double p1_x_, double p1_y_,
     double p2_x_, double p2_y_, double thickness_) :
     name(new VarString("Name", marking_name)),
+    type(new VarStringEnum("Type", "Undefined")),
     p1_x(new VarDouble("P1.x", p1_x_)),
     p1_y(new VarDouble("P1.y", p1_y_)),
     p2_x(new VarDouble("P2.x", p2_x_)),
@@ -110,11 +138,13 @@ FieldLine::FieldLine(
     thickness(new VarDouble("Line thickness", thickness_)),
     list(new VarList(marking_name)) {
   list->addChild(name);
+  list->addChild(type);
   list->addChild(p1_x);
   list->addChild(p1_y);
   list->addChild(p2_x);
   list->addChild(p2_y);
   list->addChild(thickness);
+  fillTypeEnum();
   connect(name, SIGNAL(wasEdited(VarType*)), this, SLOT(Rename()));
 }
 
@@ -129,7 +159,9 @@ FieldLine::~FieldLine() {
   list->removeChild(p1_x);
   list->removeChild(p1_y);
   list->removeChild(name);
+  list->removeChild(type);
   delete name;
+  delete type;
   delete p1_x;
   delete p1_y;
   delete p2_x;
@@ -196,6 +228,7 @@ FieldCircularArc::FieldCircularArc(const FieldCircularArc& other) :
     thickness(new VarDouble("Line thickness", other.thickness->getDouble())),
     list(new VarList(other.name->getString())) {
   list->addChild(name);
+  list->addChild(type);
   list->addChild(center_x);
   list->addChild(center_y);
   list->addChild(radius);
@@ -217,6 +250,7 @@ FieldCircularArc::FieldCircularArc(
     thickness(new VarDouble("Line thickness", thickness_)),
     list(new VarList(marking_name)) {
   list->addChild(name);
+  list->addChild(type);
   list->addChild(center_x);
   list->addChild(center_y);
   list->addChild(radius);
@@ -236,6 +270,7 @@ FieldCircularArc::FieldCircularArc(const string& marking_name) :
     thickness(new VarDouble("Line thickness", 10)),
     list(new VarList(marking_name)) {
   list->addChild(name);
+  list->addChild(type);
   list->addChild(center_x);
   list->addChild(center_y);
   list->addChild(radius);
@@ -323,7 +358,23 @@ RoboCupField::RoboCupField() {
   connect(field_arcs_list, SIGNAL(XMLwasRead(VarType*)),
           this, SLOT(ProcessNewFieldArcs()));
 
-    updateFieldLinesAndArcs();
+  updateFieldLinesAndArcs();
+
+  shapeTypeMap["Undefined"] = Undefined;
+  shapeTypeMap["CenterCircle"] = CenterCircle;
+  shapeTypeMap["TopTouchLine"] = TopTouchLine;
+  shapeTypeMap["BottomTouchLine"] = BottomTouchLine;
+  shapeTypeMap["LeftGoalLine"] = LeftGoalLine;
+  shapeTypeMap["RightGoalLine"] = RightGoalLine;
+  shapeTypeMap["HalfwayLine"] = HalfwayLine;
+  shapeTypeMap["CenterLine"] = CenterLine;
+  shapeTypeMap["LeftPenaltyStretch"] = LeftPenaltyStretch;
+  shapeTypeMap["RightPenaltyStretch"] = RightPenaltyStretch;
+  shapeTypeMap["LeftFieldLeftPenaltyStrech"] = LeftFieldLeftPenaltyStrech;
+  shapeTypeMap["LeftFieldRightPenaltyStrech"] = LeftFieldRightPenaltyStrech;
+  shapeTypeMap["RightFieldLeftPenaltyStrech"] = RightFieldLeftPenaltyStrech;
+  shapeTypeMap["RightFieldRightPenaltyStrech"] = RightFieldRightPenaltyStrech;
+
   emit calibrationChanged();
 }
 
@@ -343,6 +394,14 @@ RoboCupField::~RoboCupField() {
   delete settings;
 }
 
+SSL_FieldShapeType RoboCupField::parseShapeType(const VarStringEnum* value) const {
+  if(value->hasValue()) {
+    std::string type = value->getString();
+    return shapeTypeMap.at(type);
+  }
+  return Undefined;
+}
+
 void RoboCupField::toProtoBuffer(SSL_GeometryFieldSize& buffer) const {
   field_markings_mutex.lockForRead();
   buffer.Clear();
@@ -355,6 +414,7 @@ void RoboCupField::toProtoBuffer(SSL_GeometryFieldSize& buffer) const {
     const FieldLine& line = *(field_lines[i]);
     SSL_FieldLineSegment proto_line;
     proto_line.set_name(line.name->getString());
+    proto_line.set_type(parseShapeType(line.type));
     proto_line.mutable_p1()->set_x(line.p1_x->getDouble());
     proto_line.mutable_p1()->set_y(line.p1_y->getDouble());
     proto_line.mutable_p2()->set_x(line.p2_x->getDouble());
@@ -366,6 +426,7 @@ void RoboCupField::toProtoBuffer(SSL_GeometryFieldSize& buffer) const {
     const FieldCircularArc& arc = *(field_arcs[i]);
     SSL_FieldCicularArc proto_arc;
     proto_arc.set_name(arc.name->getString());
+//    proto_arc.set_type(parseShapeType(arc.type));
     proto_arc.mutable_center()->set_x(arc.center_x->getDouble());
     proto_arc.mutable_center()->set_y(arc.center_y->getDouble());
     proto_arc.set_radius(arc.radius->getDouble());
