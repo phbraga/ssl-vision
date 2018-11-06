@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <VarXML>
-	<Var name="Standard2010" type="list">
+	<Var name="RoboCIn" type="list">
 		<Var name="Team Name" type="string">
-			Standard2010
+			RoboCIn
 		</Var>
 		<Var name="Unique Patterns" type="bool">
 			true
@@ -11,14 +11,14 @@
 			true
 		</Var>
 		<Var name="Robot Height (mm)" type="double" minval="" maxval="">
-			135.000000
+			80.000000
 		</Var>
 		<Var name="Marker Image" type="list">
 			<Var name="Load Image File" type="bool">
 				true
 			</Var>
 			<Var name="Marker Image File" type="string">
-				patterns/teams/standard2010_16.png
+				patterns/teams/robocin.png
 			</Var>
 			<Var name="Marker Image Rows" type="int" minval="" maxval="">
 				4
